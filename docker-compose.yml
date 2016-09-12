@@ -1,0 +1,16 @@
+version: '2'
+services:
+  gitlab:
+    image: gitlab/gitlab-ce
+    ports:
+      - "880:80"
+      - "222:22"
+  jenkins:
+    image: jenkins
+    ports:
+      - "8080:8080"
+  bitbucket:
+    image: dunkelfrosch/bitbucket
+    ports:
+      - "7990:7990"
+      - "7999:7999"
