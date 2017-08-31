@@ -1,0 +1,86 @@
+pipelineJob("merge-request-pipeline") {
+ concurrentBuild()
+ quietPeriod(0)
+ authenticationToken("thetoken")
+ triggers {
+  genericTrigger {
+   genericVariables {
+    genericVariable {
+     key("MERGE_REQUEST_TO_URL")
+     value("\$.object_attributes.target.git_http_url")
+     expressionType("JSONPath")
+     regexpFilter("")
+    }
+    genericVariable {
+     key("MERGE_REQUEST_FROM_URL")
+     value("\$.object_attributes.source.git_http_url")
+     expressionType("JSONPath")
+     regexpFilter("")
+    }
+    genericVariable {
+     key("MERGE_REQUEST_TO_BRANCH")
+     value("\$.object_attributes.target_branch")
+     expressionType("JSONPath")
+     regexpFilter("")
+    }
+    genericVariable {
+     key("MERGE_REQUEST_FROM_BRANCH")
+     value("\$.object_attributes.source_branch")
+     expressionType("JSONPath")
+     regexpFilter("")
+    }
+    genericVariable {
+     key("PROJECT_ID")
+     value("\$.object_attributes.target_project_id")
+     expressionType("JSONPath")
+     regexpFilter("")
+    }
+    genericVariable {
+     key("PROJECT_PATH")
+     value("\$.object_attributes.target.path_with_namespace")
+     expressionType("JSONPath")
+     regexpFilter("")
+    }
+    genericVariable {
+     key("MERGE_REQUST_IID")
+     value("\$.object_attributes.iid")
+     expressionType("JSONPath")
+     regexpFilter("")
+    }
+    genericVariable {
+     key("MR_OBJECT_KIND")
+     value("\$.object_kind")
+     expressionType("JSONPath")
+     regexpFilter("")
+    }
+    genericVariable {
+     key("MR_OLD_REV")
+     value("\$.object_attributes.oldrev")
+     expressionType("JSONPath")
+     regexpFilter("")
+    }
+    genericVariable {
+     key("MR_ACTION")
+     value("\$.object_attributes.action")
+     expressionType("JSONPath")
+     regexpFilter("")
+    }
+    genericVariable {
+     key("MR_TITLE")
+     value("\$.object_attributes.title")
+     expressionType("JSONPath")
+     regexpFilter("")
+    }
+   }
+   regexpFilterText("\$MR_OBJECT_KIND \$MR_ACTION \$MR_OLD_REV")
+   regexpFilterExpression("^merge_request\\s(update\\s.{40}\$|open.*)")
+  }
+ }
+
+ definition {
+  cps {
+   script(readFileFromWorkspace('merge-request-pipeline/merge_request_pipeline.pipeline'))
+   sandbox()
+  }
+ }
+}

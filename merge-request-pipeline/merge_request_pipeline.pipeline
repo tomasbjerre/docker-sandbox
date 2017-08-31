@@ -1,0 +1,68 @@
+def commentMr(projectId, mergeRequestId, comment) {
+ def body = comment
+  .replaceAll(" ","%20")
+  .replaceAll("/","%2F")
+ def project = projectId
+  .replaceAll("/","%2F")
+ sh "curl http://gitlab:80/api/v4/projects/$project/merge_requests/$mergeRequestId/notes -H 'PRIVATE-TOKEN: 6xRcmSzPzzEXeS2qqr7R' -X POST -d \"body="+body+"\""
+}
+ 
+node {
+ deleteDir()
+ currentBuild.description = "$MR_TITLE from $MERGE_REQUEST_FROM_BRANCH to $MERGE_REQUEST_TO_BRANCH"
+ 
+ commentMr(env.PROJECT_PATH,env.MERGE_REQUST_IID,"Verifierar $MERGE_REQUEST_FROM_BRANCH... ${env.BUILD_URL}")
+ 
+ stage('Merge') {
+  sh "git init"
+  sh "git fetch --no-tags $MERGE_REQUEST_TO_URL +refs/heads/*:refs/remotes/origin/* --depth=200"
+  sh "git checkout origin/${env.MERGE_REQUEST_TO_BRANCH}"
+  sh "git config user.email 'je@nkins.domain'"
+  sh "git config user.name 'jenkins'"
+  sh "git merge origin/${env.MERGE_REQUEST_FROM_BRANCH}"
+  sh "git log --graph --abbrev-commit --max-count=10"
+ }
+  
+ stage('Compile') {
+  sh "./gradlew assemble"
+ }
+ 
+ stage('Unit test') {
+  sh "./gradlew test"
+  commentMr(env.PROJECT_PATH,env.MERGE_REQUST_IID,"Test ok in $MERGE_REQUEST_FROM_BRANCH =) ${env.BUILD_URL}")
+ }
+  
+ stage('Regression test') {
+  sh "echo regtest"
+  commentMr(env.PROJECT_PATH,env.MERGE_REQUST_IID,"Regression test ok in $MERGE_REQUEST_FROM_BRANCH =) ${env.BUILD_URL}")
+ }
+  
+ stage('Static code analysis') {
+  sh "./gradlew check"
+  step([
+   $class: 'ViolationsToGitLabRecorder',
+   config: [
+    gitLabUrl: 'http://gitlab:80/',
+    projectId: env.PROJECT_PATH,
+    mergeRequestId: env.MERGE_REQUST_IID,
+    commentOnlyChangedContent: true,
+    createCommentWithAllSingleFileComments: true,
+    minSeverity: 'INFO',
+    useApiToken: true,
+    apiToken: '6xRcmSzPzzEXeS2qqr7R',
+    useApiTokenCredentials: false,
+    apiTokenCredentialsId: 'id',
+    apiTokenPrivate: true,
+    authMethodHeader: true,
+    ignoreCertificateErrors: true,
+    keepOldComments: false,
+    shouldSetWip: true,
+    violationConfigs: [
+     [ pattern: '.*/checkstyle/.*\\.xml$', parser: 'CHECKSTYLE', reporter: 'Checkstyle' ], 
+     [ pattern: '.*/findbugs/.*\\.xml$', parser: 'FINDBUGS', reporter: 'Findbugs' ], 
+     [ pattern: '.*/pmd/.*\\.xml$', parser: 'PMD', reporter: 'PMD' ], 
+    ]
+   ]
+  ])
+ }
+}
